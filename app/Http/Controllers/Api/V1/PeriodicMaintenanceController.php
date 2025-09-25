@@ -53,6 +53,7 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
         // Step 1: Filtered events
         $events = CalendarEvent::query()
             ->whereNot('maintenance_type', MaintenanceType::INSTALLATION->value)
+            ->whereNot('maintenance_type', MaintenanceType::CONTROL->value)
             ->when($clientGuid, fn($q) => $q->where('client_guid', $clientGuid))
             ->when($maintenanceTypeFilter, fn($q) => $q->where('maintenance_type', $maintenanceTypeFilter))
             ->when($startAtFilter && $endAtFilter, fn($q) => $q->whereBetween('start_at', [$startAtFilter, $endAtFilter]))
@@ -98,6 +99,7 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
 
         $histories = CalendarEvent::query()
             ->whereIn('product_barcode', $barcodes)
+            ->whereNot('maintenance_type', MaintenanceType::CONTROL->value)
             ->orderBy('start_at')
             ->get()
             ->groupBy('product_barcode');
