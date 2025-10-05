@@ -21,7 +21,7 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
     public static function middleware(): array
     {
         return [
-            //new Middleware('auth:api'),
+            new Middleware('auth:api'),
         ];
     }
 
@@ -29,8 +29,11 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
     {
         $barcode = $request->productBarcode;
 
+        $auth = auth()->user();
+
         $clientProductBarcode = DB::table('anagraphic_product_codes')
         ->where('barcode', $barcode)
+        ->where('anagraphic_guid', $auth?->anagraphic_guid)
         ->first();
 
 
@@ -42,6 +45,7 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
             // Search using the cleaned barcode
             $clientProductBarcode = DB::table('anagraphic_product_codes')
                 ->where('barcode', 'LIKE', '%' . $cleanBarcode . '%')
+                ->where('anagraphic_guid', $auth?->anagraphic_guid)
                 ->first();
 
             // If found, overwrite $barcode with the actual DB value
@@ -73,16 +77,15 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
             ->toArray();
 
         $client = Anagraphic::where('guid', $clientProductBarcode->anagraphic_guid)->first();
-        $address = AnagraphicAddress::where('anagraphic_guid', $clientProductBarcode->anagraphic_guid)->first();
+        //$address = AnagraphicAddress::where('anagraphic_guid', $clientProductBarcode->anagraphic_guid)->first();
 
         return [
             'productBarcode' => $clientProductBarcode->barcode,
             'productCodice' => $clientProductBarcode->codice,
             'productDescription' => trim($clientProductBarcode->description),
             'clientName' => $client?->regione_sociale ?? '',
-            'clientAddress' => $address
-                ? trim("{$address->address} {$address->city} ({$address->province})")
-                : '',
+            'clientAddress' => trim("{$clientProductBarcode->address} {$clientProductBarcode->location}"),
+            'note' => $clientProductBarcode->note,
             'installationDate' => $installation ? Carbon::parse($installation->start_at)->format('d/m/Y') : '',
             'productBarcodeHistory' => $history,
         ];

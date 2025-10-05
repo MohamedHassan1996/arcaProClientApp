@@ -105,11 +105,11 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
             ->groupBy('product_barcode');
 
         $clients = Anagraphic::whereIn('guid', $clientGuids)->get()->keyBy('guid');
-        $addresses = AnagraphicAddress::whereIn('anagraphic_guid', $clientGuids)->get()->keyBy('anagraphic_guid');
-        $codiceAgentes = DB::table('anagraphic_product_codes')->select('codice_agente', 'barcode')->whereIn('barcode', $barcodes)->get()->keyBy('barcode');
+        //$addresses = AnagraphicAddress::whereIn('anagraphic_guid', $clientGuids)->get()->keyBy('anagraphic_guid');
+        $codiceAgentes = DB::table('anagraphic_product_codes')->select('codice_agente', 'barcode', 'address', 'location', 'note')->whereIn('barcode', $barcodes)->get()->keyBy('barcode', 'address', 'location');
 
         // Step 3: Format data
-        $formattedData = $events->map(function ($event) use ($now, $nextMonth, $clients, $addresses, $installations, $histories, $codiceAgentes) {
+        $formattedData = $events->map(function ($event) use ($now, $nextMonth, $clients, $installations, $histories, $codiceAgentes) {
             $barcode = $event->product_barcode;
             $startDate = Carbon::parse($event->start_at);
 
@@ -120,13 +120,15 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
             };
 
             $client = $clients->get($event->client_guid ?: null);
-            $address = $addresses->get($event->client_guid ?: null);
+            //$address = $addresses->get($event->client_guid ?: null);
             $installation = $installations->get($barcode);
             $history = $histories->get($barcode)?->map(fn($item) => [
                 'maintenanceType' => $item->maintenance_type,
                 'maintenanceDate' => Carbon::parse($item->start_at)->format('d/m/Y'),
             ])->values()->toArray() ?? [];
 
+            $address = $codiceAgentes->get($barcode)?->address . " " . $codiceAgentes->get($barcode)?->location;
+            $note = $codiceAgentes->get($barcode)?->note ?? '';
             return [
                 'maintenanceType' => $event->maintenance_type,
                 'productBarcode' => $barcode,
@@ -136,9 +138,8 @@ class PeriodicMaintenanceController extends Controller implements HasMiddleware
                 'maintenanceDate' => $startDate->format('d/m/Y'),
                 'clientName' => $client?->regione_sociale ?? '',
                 'clientGuid' => $client?->guid ?? '',
-                'clientAddress' => $address
-                    ? trim("{$address->address} {$address->city} ({$address->province})")
-                    : '',
+                'clientAddress' => trim($address),
+                'note' => $note,
                 'statusColor' => $statusColor,
                 'installationDate' => $installation
                     ? Carbon::parse($installation->start_at)->format('d/m/Y')
