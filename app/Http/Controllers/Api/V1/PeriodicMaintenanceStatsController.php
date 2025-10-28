@@ -29,7 +29,6 @@ class PeriodicMaintenanceStatsController extends Controller implements HasMiddle
 
         $totalCount = CalendarEvent::whereIn('maintenance_type', [
             MaintenanceType::MAINTANANCE->value,
-            MaintenanceType::CONTROL->value,
         ])->where('client_guid', $auth->anagraphic_guid)->where('maintenance_type', MaintenanceType::MAINTANANCE->value)->count();
 
         $expiredMaintenanceCount = CalendarEvent::where('maintenance_type', MaintenanceType::MAINTANANCE->value)->where('is_done', 0)->where('start_at', '<', $now)->where('client_guid', $auth->anagraphic_guid)->count();
@@ -37,6 +36,7 @@ class PeriodicMaintenanceStatsController extends Controller implements HasMiddle
         //$expiredControlCount = CalendarEvent::where('maintenance_type', MaintenanceType::CONTROL->value)->where('is_done', 0)->where('start_at', '<', $now)->where('client_guid', $auth->anagraphic_guid)->count();
         $upcomingMaintenanceCount = CalendarEvent::where('maintenance_type', MaintenanceType::MAINTANANCE->value)
             ->where('is_done', 0)
+            ->where('client_guid', $auth->anagraphic_guid)
             ->whereBetween('start_at', [$now, $inThirtyDays])
             ->count();
 
