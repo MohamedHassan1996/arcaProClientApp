@@ -93,7 +93,9 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
             return ApiResponse::error('Product not found');
         }
 
-        $calendarEvent = CalendarEvent::where('product_barcode', $barcode)->first();
+       // $calendarEvent = CalendarEvent::where('product_barcode', $barcode)->first();
+                $calendarEvent = CalendarEvent::where('maintenance_type', '!=', MaintenanceType::CONTROL->value)->where('product_barcode', $barcode)->first();
+
 
 
         $installation = CalendarEvent::where('product_barcode', $barcode)
