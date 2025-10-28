@@ -36,14 +36,13 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
         ->where('anagraphic_guid', $auth?->anagraphic_guid)
         ->first();
 
-
-
         if (!$clientProductBarcode) {
             // Extract the clean part of the barcode
             $cleanBarcode = preg_replace('/^.*?-([0-9]+-[0-9]+)(?:\.0)?$/', '$1', $barcode);
 
             // Search using the cleaned barcode
-            $clientProductBarcode = DB::table('anagraphic_product_codes')
+            $clientProductBarcode = DB::connection('proMaintenances')
+                ->table('anagraphic_product_codes')
                 ->where('barcode', 'LIKE', '%' . $cleanBarcode . '%')
                 ->where('anagraphic_guid', $auth?->anagraphic_guid)
                 ->first();
@@ -53,6 +52,44 @@ class ProductMaintenanceHistoryController extends Controller implements HasMiddl
                 $barcode = $clientProductBarcode->barcode;
             }
         }
+
+        if (!$clientProductBarcode) {
+            // Clean the barcode: remove trailing hyphen (-) if it exists
+            $cleanBarcode = rtrim($barcode, '-');
+
+            // Search using the cleaned barcode (LIKE '%a-b%')
+            $clientProductBarcode = DB::connection('proMaintenances')
+                ->table('anagraphic_product_codes')
+                ->where('barcode', 'LIKE', '%' . $cleanBarcode . '%')
+                ->where('anagraphic_guid', $auth?->anagraphic_guid)
+                ->first();
+
+            // If found, overwrite $barcode with the actual DB value
+            if ($clientProductBarcode) {
+                $barcode = $clientProductBarcode->barcode;
+            }
+        }
+
+        if (!$clientProductBarcode) {
+            // Split the barcode by '-'
+            $parts = explode('-', $barcode);
+
+            // Combine only the first two parts if available
+            $cleanBarcode = isset($parts[0], $parts[1]) ? $parts[0] . '-' . $parts[1] : $barcode;
+
+            // Search using the cleaned barcode (LIKE '%0000001147-ARCLEAN2ND650B%')
+            $clientProductBarcode = DB::connection('proMaintenances')
+                ->table('anagraphic_product_codes')
+                ->where('barcode', 'LIKE', '%' . $cleanBarcode . '%')
+                ->where('anagraphic_guid', $auth?->anagraphic_guid)
+                ->first();
+
+            // If found, overwrite $barcode with the actual DB value
+            if ($clientProductBarcode) {
+                $barcode = $clientProductBarcode->barcode;
+            }
+        }
+
 
 
         if (!$clientProductBarcode) {
